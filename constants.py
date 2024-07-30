@@ -27,5 +27,5 @@ JOIN
 JOIN 
     stimuli AS stim2_stimuli ON trials.stim2 = stim2_stimuli.number
 WHERE
-    trials.feedback = false AND trials.block > 6;
+    trials.feedback = true AND trials.block >= 6;
 """
