@@ -98,16 +98,13 @@ class Risk:
         """
         result = {}
         for r in self.rows:
-            # extracting prob0 and prob1 from the row
-            prob0 = [r[0], r[1], 1 - r[0] - r[1]]
-            prob1 = [r[2], r[3], 1 - r[2] - r[3]]
             # calculating the risk taken using helper function
-            risk_taken = get_risk_taken(prob0, prob1, r[4])
-            # if the risk is 0.5, not considering this case
-            if risk_taken != 0.5:
+            risk_taken = get_risk_taken(r[0], r[1], r[2])
+            # skipping case in which no choice was made
+            if risk_taken != -1:
                 # appending key of day and value a list with risks taken between 0 and 100
                 # each day has 70 trials scores
-                result.setdefault(to_unique_day(r[5]), []).append(float(risk_taken * 100))
+                result.setdefault(to_unique_day(r[3]), []).append(float(risk_taken * 100))
 
         average = {}
         majority = {}
@@ -121,28 +118,20 @@ class Risk:
         return [average, majority]
 
 
-def get_risk_taken(prob0: list, prob1: list, choice: int):
+def get_risk_taken(prob0: int, prob1: int, choice: int):
     """Calculates the risk taken given the probabilities and the choice.
     Args:
-      prob0: percentages of reward, punishment, neutral for image1.
-      prob1: percentages of reward, punishment, neutral for image2.
+      prob0: percentages of reward for image1, 0.15 is safe and 0.5 is risky.
+      prob1: percentages of reward for image2.
       choice: the choice taken by the volunteer.
     Returns: the risk taken.
     """
-    outcomes = [1, -1, 0]
-    # creating two random variables with probabilities for image1 and image2
-    rv0 = rv_discrete(values=(outcomes, prob0))
-    rv1 = rv_discrete(values=(outcomes, prob1))
-    # calculating the variance of the two images
-    # the higher the variance the higher the risk of an image
-    var0 = rv0.var()
-    var1 = rv1.var()
-    # normalizing the variance, we define the riskiness of image1 against image2 and viceversa
-    total_variance = var0 + var1
-    riskiness0 = var0 / total_variance
-    riskiness1 = var1 / total_variance
-    # returning the riskiness of the choice of the volunteer
-    return riskiness0 if choice == 0 else riskiness1
+    if prob0 == prob1:
+        return -1
+    if choice == 0:
+        return int(prob0 > prob1)
+    else:
+        return int(prob1 > prob0)
 
 
 def to_unique_day(timestamp):
