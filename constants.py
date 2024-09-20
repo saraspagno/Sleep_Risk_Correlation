@@ -1,5 +1,11 @@
-# edit here to calculate for different groups
-GROUP = "first_50"
+from datetime import datetime
+
+# Edit here to calculate for different groups
+GROUPS = ["first_50", "second_50"]
+
+# For the risk scores, either use the objective reward of each image,
+# or use a learned perceived score that the user learned from his past choices.
+USE_PERCEIVED_REWARD = True
 
 '''
 Selects all the sleep answers including the score "overall".
@@ -18,7 +24,9 @@ selects from stimuli table the reward percentages.
 RISK_QUERY = """
 SELECT 
     stim1_stimuli.reward AS r_0, stim2_stimuli.reward AS r_1,
-    trials.choice, trials.choice_time
+    trials.choice, trials.choice_time,
+    trials.stim1 as im_0, trials.stim2 as im_1,
+    trials.outcome
 FROM 
     trials
 JOIN 
@@ -30,3 +38,14 @@ WHERE
     AND stim1_stimuli.rank == 1 AND stim2_stimuli.rank == 1
     AND trials.feedback = true AND trials.trial > 5;
 """
+
+
+def to_unique_day(timestamp):
+    """Turns a timestamp into a unique day without seconds.
+    Args:
+      timestamp: the timestamp which might include seconds.
+    Returns: a unique string representing one day, excluding time and seconds.
+    """
+    original_timestamp_seconds = timestamp / 1000
+    datetime_obj = datetime.fromtimestamp(original_timestamp_seconds)
+    return datetime_obj.strftime("%d %B %Y")
