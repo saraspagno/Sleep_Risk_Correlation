@@ -27,7 +27,7 @@ def get_all_correlations(group: str):
         group: the name of the directory (group) which contains the db files.
     Returns: correlations between sleep and binary risk, and correlations between sleep and continuous risk.
     """
-    sleep_w_risk_binary_all, sleep_w_risk_continuous_all = {}, {}
+    sleep_w_risk_binary_all, sleep_w_risk_continuous_all, day_accuracy_map = {}, {}, {}
     files = os.listdir(group)
     files.sort()
     for filename in files:
@@ -42,16 +42,18 @@ def get_all_correlations(group: str):
         # merging the sleep and risk scores into a dictionary of sleep:risk, based on equal unique day
         sleep_w_risk_binary_all.update(merge_sleep_risk_on_date(sleep.correlations, risk.binary_corr))
         sleep_w_risk_continuous_all.update(merge_sleep_risk_on_date(sleep.correlations, risk.continuous_corr))
-    return sleep_w_risk_binary_all, sleep_w_risk_continuous_all
+        day_accuracy_map = risk.accuracy_corr
+    return sleep_w_risk_binary_all, sleep_w_risk_continuous_all, day_accuracy_map
 
 
 def main():
     for group in constants.GROUPS:
         print(f"processing directory: {group}\n")
-        binary, continuous = get_all_correlations(group)
-        graph = Graph(binary, continuous, group)
-        graph.show_regression()
-        graph.show_box_plot()
+        sleep_risk_binary_map, sleep_risk_continuous, day_accuracy_map = get_all_correlations(group)
+        graph = Graph(sleep_risk_binary_map, sleep_risk_continuous, day_accuracy_map, group)
+        graph.show_sleep_risk_regression()
+        graph.show_risk_sleep_box_plot()
+        graph.show_accuracy_day_regression()
 
 
 if __name__ == '__main__':

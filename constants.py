@@ -6,6 +6,7 @@ GROUPS = ["first_50", "second_50"]
 # For the risk scores, either use the objective reward of each image,
 # or use a learned perceived score that the user learned from his past choices.
 USE_PERCEIVED_REWARD = True
+ACCOUNT_ACCURACY = True
 
 '''
 Selects all the sleep answers including the score "overall".
@@ -24,9 +25,10 @@ selects from stimuli table the reward percentages.
 RISK_QUERY = """
 SELECT 
     stim1_stimuli.reward AS r_0, stim2_stimuli.reward AS r_1,
+    stim1_stimuli.punishment AS p_0, stim2_stimuli.punishment AS p_1,
     trials.choice, trials.choice_time, 
     trials.stim1 as im_0, trials.stim2 as im_1,
-    trials.outcome, trials.feedback, trials.rank
+    trials.outcome, trials.feedback, stim1_stimuli.rank, stim2_stimuli.rank
 FROM 
     trials
 JOIN 
