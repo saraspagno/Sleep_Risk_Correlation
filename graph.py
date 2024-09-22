@@ -5,13 +5,15 @@ from scipy.stats import pearsonr
 
 
 class Graph:
-    def __init__(self, risk_binary: dict, sleep_risk_continuous: dict, day_accuracy: dict, group: str):
+    def __init__(self, risk_binary: dict, sleep_risk_continuous: dict, time_accuracy: dict, group: str):
         self.sleep_risk_binary = risk_binary
         self.sleep_risk_continuous = sleep_risk_continuous
-        self.day_accuracy = day_accuracy
+        self.time_accuracy = time_accuracy
         self.group = group
 
     def show_sleep_risk_regression(self):
+        if len(self.sleep_risk_continuous) < 3:
+            return
         data = {'sleep': list(self.sleep_risk_continuous.keys()),
                 'risk': list(self.sleep_risk_continuous.values())}
         df = pd.DataFrame(data)
@@ -35,15 +37,13 @@ class Graph:
         plt.ylabel('Daily Sleep Quality')
         plt.show()
 
-    def show_accuracy_day_regression(self):
-        days = list(self.day_accuracy.keys())
-        accuracies = list(self.day_accuracy.values())
+    def show_accuracy_time_regression(self):
+        time = list(self.time_accuracy.keys())
+        accuracies = list(self.time_accuracy.values())
         plt.figure(figsize=(8, 6))
-        plt.plot(days, accuracies, marker='o', linestyle='-', color='b', label='Accuracy')
-        plt.xlabel('Day')
+        plt.plot(time, accuracies, marker='o', linestyle='-', color='b', label='Accuracy')
+        plt.xlabel('Time')
         plt.ylabel('Accuracy')
         plt.title(f'Accuracy over time, Group: {self.group}')
-        plt.xticks(ticks=range(len(days)), labels=['' for _ in days])
-        plt.xticks(days)
         plt.legend()
         plt.show()

@@ -1,3 +1,4 @@
+import time
 from datetime import datetime
 
 # Edit here to calculate for different groups
@@ -6,7 +7,7 @@ GROUPS = ["first_50", "second_50"]
 # For the risk scores, either use the objective reward of each image,
 # or use a learned perceived score that the user learned from his past choices.
 USE_PERCEIVED_REWARD = True
-ACCOUNT_ACCURACY = True
+ACCOUNT_ACCURACY = False
 
 '''
 Selects all the sleep answers including the score "overall".
@@ -28,7 +29,8 @@ SELECT
     stim1_stimuli.punishment AS p_0, stim2_stimuli.punishment AS p_1,
     trials.choice, trials.choice_time, 
     trials.stim1 as im_0, trials.stim2 as im_1,
-    trials.outcome, trials.feedback, stim1_stimuli.rank, stim2_stimuli.rank
+    trials.outcome, trials.feedback, stim1_stimuli.rank, stim2_stimuli.rank,
+    trials.block
 FROM 
     trials
 JOIN 
@@ -37,11 +39,11 @@ JOIN
     stimuli AS stim2_stimuli ON trials.stim2 = stim2_stimuli.image
 WHERE
     stim1_stimuli.image > 17 AND stim2_stimuli.image > 17
-    AND trials.block > 5;
+    AND trials.block > 5 AND stim1_stimuli.rank = 1 AND stim2_stimuli.rank = 1;
 """
 
 
-def to_unique_day(timestamp):
+def to_unique_day(timestamp) -> int:
     """Turns a timestamp into a unique day without seconds.
     Args:
       timestamp: the timestamp which might include seconds.
@@ -49,4 +51,12 @@ def to_unique_day(timestamp):
     """
     original_timestamp_seconds = timestamp / 1000
     datetime_obj = datetime.fromtimestamp(original_timestamp_seconds)
-    return datetime_obj.strftime("%d %B %Y")
+    return int(datetime_obj.replace(hour=0, minute=0, second=0, microsecond=0).timestamp())
+
+
+def get_normalized_probs(probs: list) -> []:
+    """Takes the perceived probabilities values and normalizes them with values between 0 and 1.
+    """
+    total = sum(probs)
+    actual_probs = [p / total for p in probs]
+    return actual_probs
