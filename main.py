@@ -52,9 +52,9 @@ def get_all_correlations(group: str):
         merged_risk_binary = merge_sleep_risk_on_date(sleep.correlations, risk.binary_corr)
         graph = Graph(merged_risk_binary, merged_risk_continuous, accuracy.accuracy_corr, file_path)
         graph.show_sleep_risk_regression()
-        graph.show_accuracy_time_regression()
-        if sleep_and_risk_correlated(merged_risk_continuous):
-            graph.show_accuracy_time_regression()
+        # graph.show_accuracy_time_regression()
+        # if sleep_and_risk_correlated(merged_risk_continuous):
+        #     graph.show_accuracy_time_regression()
 
 
 def check_accuracy(accuracy_map: dict, threshold: float = 90):

@@ -7,7 +7,7 @@ GROUPS = ["first_50", "second_50"]
 # For the risk scores, either use the objective reward of each image,
 # or use a learned perceived score that the user learned from his past choices.
 USE_PERCEIVED_REWARD = True
-ACCOUNT_ACCURACY = False
+SKIP_IF_RANK_NOT_1 = True
 
 '''
 Selects all the sleep answers including the score "overall".
@@ -39,7 +39,7 @@ JOIN
     stimuli AS stim2_stimuli ON trials.stim2 = stim2_stimuli.image
 WHERE
     stim1_stimuli.image > 17 AND stim2_stimuli.image > 17
-    AND trials.block > 5 AND stim1_stimuli.rank = 1 AND stim2_stimuli.rank = 1;
+    AND trials.block > 5;
 """
 
 

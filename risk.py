@@ -48,17 +48,11 @@ class Risk:
 
         day_to_average_risk_map = {}
         day_to_binary_risk_map = {}
-        # using each day to calculate the average accuracy of the day
-        self.accuracy.average_accuracies()
+
+        # TODO something with accuracies?
 
         # using each day to calculate the average (continuous) and majority (binary) score of the day
         for day, risks in all_risks.items():
-            # if the flag to account for accuracy is on, AND:
-            # either the day is not in the accuracy map (meaning we have not enough data for it)
-            # or either the accuracy for the day didn't reach the threshold
-            # then - we don't skip the risk calculation, meaning we don't count this day.
-            # if constants.ACCOUNT_ACCURACY and ((day not in day_to_accuracy_map) or day_to_accuracy_map[day] < 50):
-            #     continue
             av = sum(risks) / len(risks)
             day_to_average_risk_map[day] = av
             majority_above_half = sum(1 for v in risks if v > 50) >= len(risks) / 2
@@ -71,6 +65,8 @@ class Risk:
                  all_risks: dict):
         """Adds one couple of day:risk to the all risks map (in place, doesn't return anything).
         """
+        if constants.SKIP_IF_RANK_NOT_1 and (rank0 != 1 or rank1 != 1):
+            return
         probs0, probs1 = constants.get_normalized_probs(perceived0), constants.get_normalized_probs(perceived1)
         # calculating the risk taken using helper function
         if not constants.USE_PERCEIVED_REWARD:
@@ -147,8 +143,8 @@ def get_objective_risk_taken(r0: float, r1: float, choice: int, rank0: int, rank
         return -1
     elif r1 == r0:
         return -1
-    elif abs(probs0[0] - r0) > 0.15 or abs(probs1[0] - r1) > 0.15:
-        print("Too much difference")
+    # elif abs(probs0[0] - r0) > 0.15 or abs(probs1[0] - r1) > 0.15:
+    #     print("Too much difference")
         return -1
     elif choice == 0:
         return int(r0 > r1)
