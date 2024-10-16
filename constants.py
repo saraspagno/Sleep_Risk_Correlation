@@ -26,11 +26,9 @@ selects from stimuli table the reward percentages.
 RISK_QUERY = """
 SELECT 
     stim1_stimuli.reward AS r_0, stim2_stimuli.reward AS r_1,
-    stim1_stimuli.punishment AS p_0, stim2_stimuli.punishment AS p_1,
     trials.choice, trials.choice_time, 
     trials.stim1 as im_0, trials.stim2 as im_1,
-    trials.outcome, trials.feedback, stim1_stimuli.rank, stim2_stimuli.rank,
-    trials.block
+    trials.outcome, trials.feedback, stim1_stimuli.rank, stim2_stimuli.rank
 FROM 
     trials
 JOIN 

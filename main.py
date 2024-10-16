@@ -39,22 +39,19 @@ def get_all_correlations(group: str):
         print(f"processing file: {file_path}")
         db = DataBase(file_path)
 
-        # creating Accuracy object, which will create a map of accuracies over time
-        accuracy = Accuracy()
-
         # creating the Risk object, which will create a map between unique day and risk score
-        risk = Risk(db, accuracy)
+        risk = Risk(db)
         # creating the sleep object, which will create a map between unique day and sleep score
         sleep = Sleep(db)
 
         # merging the sleep and risk scores into a dictionary of sleep:risk, based on equal unique day
         merged_risk_continuous = merge_sleep_risk_on_date(sleep.correlations, risk.continuous_corr)
         merged_risk_binary = merge_sleep_risk_on_date(sleep.correlations, risk.binary_corr)
-        graph = Graph(merged_risk_binary, merged_risk_continuous, accuracy.accuracy_corr, file_path)
-        graph.show_sleep_risk_regression()
-        # graph.show_accuracy_time_regression()
-        # if sleep_and_risk_correlated(merged_risk_continuous):
-        #     graph.show_accuracy_time_regression()
+        merged_risk_expected = merge_sleep_risk_on_date(risk.expected_corr, risk.continuous_corr)
+
+        graph = Graph(merged_risk_binary, merged_risk_continuous, merged_risk_expected, file_path)
+        # graph.show_sleep_risk_regression()
+        graph.show_expected_risk_regression()
 
 
 def check_accuracy(accuracy_map: dict, threshold: float = 90):
