@@ -4,6 +4,10 @@ import pandas as pd
 from scipy.stats import pearsonr
 import pingouin as pg
 import statsmodels.api as sm
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+from statsmodels.stats.mediation import Mediation
 
 
 class Graph:
@@ -22,6 +26,163 @@ class Graph:
         plt.xlabel('Risk Appeal Score')
         plt.ylabel('Daily Risk Taken')
         plt.show()
+
+    def partial_correlation(self):
+        r_values = {}
+        p_values = {}
+        variables = ['Overall Sleep Score', 'Woke Early Score', 'Woke Many Times Score', 'Sleep Latency Score']
+
+        for var in variables:
+            result = pg.partial_corr(data=self.merged_df, x=var, y='Risk Score', covar='Risk Appeal Score')
+            r_values[var] = result['r'].values[0]
+            p_values[var] = result['p-val'].values[0]
+
+        corr_df = pd.DataFrame([r_values], index=['Risk Score'])
+        annotations = pd.DataFrame(index=['Risk Score'], columns=r_values.keys())
+
+        for col in r_values.keys():
+            r_val = r_values[col]
+            p_val = p_values[col]
+            if p_val < 0.05:
+                annotations.at['Risk Score', col] = f'{r_val:.3f} $\mathbf{{(p={p_val:.3f}}}$)'
+            else:
+                annotations.at['Risk Score', col] = f'{r_val:.3f} (p={p_val:.3f})'
+
+        plt.figure(figsize=(14, 3))
+
+        sns.heatmap(corr_df, annot=annotations.values, cmap='coolwarm', vmin=-1, vmax=1, center=0, fmt='',
+                    annot_kws={"size": 12})
+
+        plt.title(f'Partial Correlations (r-values): {self.group}', fontweight='bold')
+
+        plt.tight_layout()
+        plt.show()
+
+    def linear_regression(self):
+        coef_values = {}
+        p_values = {}
+        variables = ['Overall Sleep Score', 'Woke Early Score', 'Woke Many Times Score', 'Sleep Latency Score']
+
+        for var in variables:
+            X = self.merged_df[[var, 'Risk Appeal Score']]
+            y = self.merged_df['Risk Score']
+            X = sm.add_constant(X)
+            model = sm.OLS(y, X).fit()
+            coef_values[var] = model.params[var]
+            p_values[var] = model.pvalues[var]
+
+        coef_df = pd.DataFrame([coef_values], index=['Risk Score'])
+        annotations = pd.DataFrame(index=['Risk Score'], columns=coef_values.keys())
+
+        for col in coef_values.keys():
+            coef_val = coef_values[col]
+            p_val = p_values[col]
+            if p_val < 0.05:
+                annotations.at['Risk Score', col] = f'{coef_val:.3f} $\mathbf{{(p={p_val:.3f}}}$)'
+            else:
+                annotations.at['Risk Score', col] = f'{coef_val:.3f} (p={p_val:.3f})'
+
+        plt.figure(figsize=(14, 3))
+        sns.heatmap(coef_df, annot=annotations.values, cmap='coolwarm', vmin=-1, vmax=1, center=0, fmt='',
+                    annot_kws={"size": 12})
+
+        plt.title(f'Linear Regression Coefficients: {self.group}', fontweight='bold')
+
+        plt.tight_layout()
+        plt.show()
+
+    def linear_regression_together(self):
+        X = self.merged_df[['Overall Sleep Score', 'Woke Early Score', 'Woke Many Times Score', 'Sleep Latency Score',
+                            'Risk Appeal Score']]
+        y = self.merged_df['Risk Score']  # Dependent variable
+
+        X = sm.add_constant(X)  # Add constant (intercept) term
+        model = sm.OLS(y, X).fit()  # Fit the linear regression model
+        print(model.summary())  # Print summary of results
+
+    def interation_term_analysis(self):
+        coef_values = {}
+        p_values = {}
+        variables = ['Overall Sleep Score', 'Woke Early Score', 'Woke Many Times Score', 'Sleep Latency Score']
+
+        for var in variables:
+            self.merged_df[f'{var}_x_RiskAppeal'] = self.merged_df[var] * self.merged_df['Risk Appeal Score']
+            X = self.merged_df[[var, 'Risk Appeal Score', f'{var}_x_RiskAppeal']]
+            y = self.merged_df['Risk Score']
+            X = sm.add_constant(X)
+            model = sm.OLS(y, X).fit()
+            coef_values[var] = model.params[var]
+            p_values[var] = model.pvalues[var]
+
+        coef_df = pd.DataFrame([coef_values], index=['Risk Score'])
+        annotations = pd.DataFrame(index=['Risk Score'], columns=coef_values.keys())
+
+        for col in coef_values.keys():
+            coef_val = coef_values[col]
+            p_val = p_values[col]
+            if p_val < 0.05:
+                annotations.at['Risk Score', col] = f'$\mathbf{{{coef_val:.3f}}}$ (p=$\mathbf{{{p_val:.3f}}}$)'
+            else:
+                annotations.at['Risk Score', col] = f'{coef_val:.3f} (p={p_val:.3f})'
+
+        plt.figure(figsize=(14, 3))
+        sns.heatmap(coef_df, annot=annotations.values, cmap='coolwarm', vmin=-1, vmax=1, center=0, fmt='',
+                    annot_kws={"size": 12})
+
+        plt.title(f'Integration Term Analysis Coefficients: {self.group}', fontweight='bold')
+
+        plt.tight_layout()
+        plt.show()
+
+    def random_forest(self):
+        X = self.merged_df[['Overall Sleep Score', 'Woke Early Score', 'Woke Many Times Score', 'Sleep Latency Score',
+                            'Risk Appeal Score']]
+        y = self.merged_df['Risk Score']
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+        rf_model = RandomForestRegressor(n_estimators=100)
+        rf_model.fit(X_train, y_train)
+
+        predictions = rf_model.predict(X_test)
+        mse = mean_squared_error(y_test, predictions)
+        print(f'Mean Squared Error: {mse}')
+
+        # Feature importance plot
+        plt.figure(figsize=(20, 20))
+        feature_importance = pd.Series(rf_model.feature_importances_, index=X.columns)
+        feature_importance.sort_values().plot(kind='barh')
+        plt.title('Feature Importance')
+        plt.show()
+
+    def pair_plot(self):
+        sns.pairplot(self.merged_df[
+                         ['Overall Sleep Score', 'Woke Early Score', 'Woke Many Times Score', 'Sleep Latency Score',
+                          'Risk Appeal Score', 'Risk Score']])
+        plt.show()
+
+    def mediation_analysis(self):
+        for var in ['Overall Sleep Score', 'Woke Early Score', 'Woke Many Times Score', 'Sleep Latency Score']:
+            # Independent variable: Sleep score
+            X = self.merged_df[var]
+            # Mediator: Risk Appeal Score
+            M = self.merged_df['Risk Appeal Score']
+            # Dependent variable: Risk Score
+            Y = self.merged_df['Risk Score']
+
+            # Fit the mediator model (M ~ X)
+            mediator_model = sm.OLS(M, sm.add_constant(X)).fit()
+
+            # Fit the outcome model (Y ~ X + M)
+            outcome_model = sm.OLS(Y, sm.add_constant(pd.concat([X, M], axis=1))).fit()
+
+            # Perform mediation analysis
+            med = Mediation(outcome_model, mediator_model, exposure=var, mediator='Risk Appeal Score')
+            med_summary = med.fit()
+
+            # Print summary of mediation analysis
+            print(f"Mediation Analysis for {var}:")
+            print(med_summary.summary())
 
     def tests(self, sleep_score: str):
         # Pearson correlation sleep / risk

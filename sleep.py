@@ -9,7 +9,6 @@ class Sleep:
     Attributes:
         db: a database instance.
         rows: the rows returned by the sleep query.
-        correlations: map between date and sleep score.
     """
 
     def __init__(self, self_db: DataBase):

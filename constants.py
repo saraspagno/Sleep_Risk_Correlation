@@ -1,6 +1,8 @@
 import time
 from datetime import datetime
 
+import pandas as pd
+
 # Edit here to calculate for different groups
 GROUPS = ["first_50", "second_50"]
 
@@ -10,7 +12,7 @@ USE_PERCEIVED_REWARD = True
 SKIP_IF_RANK_NOT_1 = True
 
 '''
-Selects all the sleep answers including the score "overall".
+Selects all the sleep answers from the ANSWERS table including the score "overall".
 '''
 SLEEP_QUERY = """
 SELECT answer, answer_time 
@@ -20,15 +22,15 @@ AND answer LIKE '%overall=%'
 """
 
 '''
-selects a choice and time from the trial tables, join on the stimuli based on equal image number, 
-selects from stimuli table the reward percentages.
+Selects all information from TRIALS table, joined on the STIMULI table based on equal image number.
 '''
 RISK_QUERY = """
 SELECT 
     stim1_stimuli.reward AS r_0, stim2_stimuli.reward AS r_1,
     trials.choice, trials.choice_time, 
     trials.stim1 as im_0, trials.stim2 as im_1,
-    trials.outcome, trials.feedback, stim1_stimuli.rank, stim2_stimuli.rank
+    trials.outcome, trials.feedback, stim1_stimuli.rank, stim2_stimuli.rank,
+    trials.trial
 FROM 
     trials
 JOIN 
@@ -50,11 +52,3 @@ def to_unique_day(timestamp) -> int:
     original_timestamp_seconds = timestamp / 1000
     datetime_obj = datetime.fromtimestamp(original_timestamp_seconds)
     return int(datetime_obj.replace(hour=0, minute=0, second=0, microsecond=0).timestamp())
-
-
-def get_normalized_probs(probs: list) -> []:
-    """Takes the perceived probabilities values and normalizes them with values between 0 and 1.
-    """
-    total = sum(probs)
-    actual_probs = [p / total for p in probs]
-    return actual_probs
