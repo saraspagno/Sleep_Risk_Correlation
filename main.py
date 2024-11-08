@@ -1,28 +1,27 @@
 import os
 
-from scipy.stats import linregress
-
+import pandas as pd
 import constants
-from accuracy import Accuracy
 from database import DataBase
 from graph import Graph
 from risk import Risk
 from sleep import Sleep
 
 
-def merge_sleep_risk_on_date(sleep_values: dict, risk_values: dict):
-    """Receives sleep and risk dictionaries, mapping unique days to sleep and risk scores respectively,
-    and returns a merged dictionary of sleep with its own risk score (based on equal unique day).
-    Args:
-        sleep_values: the map of unique day and sleep score.
-        risk_values: the map of unique day and risk score.
-    Returns: a map mapping between sleep and risk on equal day.
-    """
-    score_map = {}
-    for date in sleep_values:
-        if date in risk_values:
-            score_map[sleep_values[date]] = risk_values[date]
-    return score_map
+def merge_all_on_same_day(overall: dict, work_early: dict, woke_many_time: dict, sleep_latency: dict, risk: dict,
+                          risk_appeal: dict):
+    data = []
+    for date in overall:
+        if date in risk and date in risk_appeal:
+            data.append(
+                {'Day': date,
+                 'Overall Sleep Score': overall[date],
+                 'Woke Early Score': work_early[date],
+                 'Woke Many Times Score': woke_many_time[date],
+                 'Sleep Latency Score': sleep_latency[date],
+                 'Risk Score': risk[date],
+                 'Risk Appeal Score': risk_appeal[date]})
+    return pd.DataFrame(data)
 
 
 def get_all_correlations(group: str):
@@ -31,9 +30,9 @@ def get_all_correlations(group: str):
         group: the name of the directory (group) which contains the db files.
     Returns: correlations between sleep and binary risk, and correlations between sleep and continuous risk.
     """
-    sleep_w_risk_binary_all, sleep_w_risk_continuous_all, day_accuracy_map = {}, {}, {}
     files = os.listdir(group)
     files.sort()
+    all_merged_dfs = []
     for filename in files:
         file_path = os.path.join(group, filename)
         print(f"processing file: {file_path}")
@@ -45,32 +44,19 @@ def get_all_correlations(group: str):
         sleep = Sleep(db)
 
         # merging the sleep and risk scores into a dictionary of sleep:risk, based on equal unique day
-        merged_risk_continuous = merge_sleep_risk_on_date(sleep.correlations, risk.continuous_corr)
-        merged_risk_binary = merge_sleep_risk_on_date(sleep.correlations, risk.binary_corr)
-        merged_risk_expected = merge_sleep_risk_on_date(risk.expected_corr, risk.continuous_corr)
+        merged_df = merge_all_on_same_day(sleep.overall, sleep.woke_early, sleep.woke_many_time, sleep.sleep_latency,
+                                          risk.continuous_corr, risk.risk_appeal)
+        all_merged_dfs.append(merged_df)
 
-        graph = Graph(merged_risk_binary, merged_risk_continuous, merged_risk_expected, file_path)
+        # graph = Graph(merged_df, file_path)
         # graph.show_sleep_risk_regression()
-        graph.show_expected_risk_regression()
-
-
-def check_accuracy(accuracy_map: dict, threshold: float = 90):
-    total_accuracy = sum(accuracy_map.values()) / len(accuracy_map)
-    return total_accuracy >= threshold
-
-
-def accuracy_is_improving(accuracy_map: dict) -> bool:
-    time = list(accuracy_map.keys())
-    accuracies = list(accuracy_map.values())
-    slope, _, _, p_value, _ = linregress(time, accuracies)
-    return slope > 0 and p_value <= 0.05
-
-
-def sleep_and_risk_correlated(sleep_risk: dict) -> bool:
-    sleep = list(sleep_risk.keys())
-    risk = list(sleep_risk.values())
-    slope, _, _, p_value, _ = linregress(sleep, risk)
-    return slope < 0 and p_value <= 0.05
+        # graph.print_partial_corr()
+    final_merged_df = pd.concat(all_merged_dfs, ignore_index=True)
+    graph = Graph(final_merged_df, group)
+    graph.show_regression("Woke Many Times Score")
+    # graph.show_sleep_risk_regression()
+    # graph.show_risk_risk_appeal_regression()
+    return final_merged_df
 
 
 def main():
