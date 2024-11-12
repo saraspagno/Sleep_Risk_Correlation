@@ -59,9 +59,8 @@ def get_all_correlations():
             all_merged_dfs.append(merged_df)
         final_merged_df = pd.concat(all_merged_dfs, ignore_index=True)
         graph = Graph(final_merged_df, group)
-        graph.show_risk_risk_appeal_regression()
-        graph.partial_correlation()
-        graph.pair_plot()
+        graph.no_risk_correlation()
+
 
 def main():
     get_all_correlations()
