@@ -8,6 +8,8 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 from statsmodels.stats.mediation import Mediation
+import statsmodels.formula.api as smf
+import numpy as np
 
 
 class Graph:
@@ -18,10 +20,10 @@ class Graph:
     def show_risk_risk_appeal_regression(self):
         if len(self.merged_df) < 3:
             return
-        r_value, p_value = pearsonr(self.merged_df['Risk Appeal Score'], self.merged_df['Risk Score'])
+        r_value, p_value = pearsonr(self.merged_df['Risk_Appeal_Score'], self.merged_df['Risk_Score'])
         plt.figure(figsize=(10, 6))
-        sns.regplot(x='Risk Appeal Score', y='Risk Score', data=self.merged_df)
-        plt.text(0.1, 0.9, f'R-value = {r_value:.2f} \nP-value: {p_value:.4f}', transform=plt.gca().transAxes)
+        sns.regplot(x='Risk_Appeal_Score', y='Risk_Score', data=self.merged_df)
+        plt.text(0.1, 0.9, f'R-value = {r_value:.2f} \nP-value: {p_value:.4}', transform=plt.gca().transAxes)
         plt.title(f'Regression of Risk vs. Risk Appeal Score, Group: {self.group}')
         plt.xlabel('Risk Appeal Score')
         plt.ylabel('Daily Risk Taken')
@@ -30,10 +32,41 @@ class Graph:
     def partial_correlation(self):
         r_values = {}
         p_values = {}
+        variables = ['Overall_Sleep_Score', 'Woke_Early_Score', 'Woke_Many_Times_Score', 'Sleep_Latency_Score']
+
+        for var in variables:
+            result = pg.partial_corr(data=self.merged_df, x=var, y='Risk_Score', covar='Risk_Appeal_Score')
+            r_values[var] = result['r'].values[0]
+            p_values[var] = result['p-val'].values[0]
+
+        corr_df = pd.DataFrame([r_values], index=['Risk_Score'])
+        annotations = pd.DataFrame(index=['Risk_Score'], columns=r_values.keys())
+
+        for col in r_values.keys():
+            r_val = r_values[col]
+            p_val = p_values[col]
+            if p_val < 0.05:
+                annotations.at['Risk Score', col] = f'{r_val:.3f} $\mathbf{{(p={p_val:.3f}}}$)'
+            else:
+                annotations.at['Risk Score', col] = f'{r_val:.3f} (p={p_val:.3f})'
+
+        plt.figure(figsize=(14, 3))
+
+        sns.heatmap(corr_df, annot=annotations.values, cmap='coolwarm', vmin=-1, vmax=1, center=0, fmt='',
+                    annot_kws={"size": 12})
+
+        plt.title(f'Partial Correlations (r-values): {self.group}', fontweight='bold')
+
+        plt.tight_layout()
+        plt.show()
+
+    def no_risk_correlation(self):
+        r_values = {}
+        p_values = {}
         variables = ['Overall Sleep Score', 'Woke Early Score', 'Woke Many Times Score', 'Sleep Latency Score']
 
         for var in variables:
-            result = pg.partial_corr(data=self.merged_df, x=var, y='Risk Score', covar='Risk Appeal Score')
+            result = pg.corr(self.merged_df[var], self.merged_df['Risk Score'])
             r_values[var] = result['r'].values[0]
             p_values[var] = result['p-val'].values[0]
 
@@ -53,7 +86,7 @@ class Graph:
         sns.heatmap(corr_df, annot=annotations.values, cmap='coolwarm', vmin=-1, vmax=1, center=0, fmt='',
                     annot_kws={"size": 12})
 
-        plt.title(f'Partial Correlations (r-values): {self.group}', fontweight='bold')
+        plt.title(f'Sleep vs Risk Correlation (r-values): {self.group}', fontweight='bold')
 
         plt.tight_layout()
         plt.show()
@@ -217,4 +250,76 @@ class Graph:
         plt.title(f'Regression of Risk vs. {sleep_score}, Group: {self.group}')
         plt.xlabel('Daily Sleep Quality')
         plt.ylabel('Daily Risk Taken')
+        plt.show()
+
+    def mixed_model_regression(self):
+        if len(self.merged_df) < 3:
+            return
+
+        # Fit a mixed-effects model
+        model = smf.mixedlm("Risk_Score ~ Risk_Appeal_Score", self.merged_df, groups=self.merged_df['User'])
+        result = model.fit()
+
+        # Extract slope (coefficient) and p-value for Risk Appeal Score
+        slope = result.params['Risk_Appeal_Score']
+        p_value = result.pvalues['Risk_Appeal_Score']
+
+        # Plot the data points
+        plt.figure(figsize=(10, 6))
+        sns.scatterplot(x='Risk_Appeal_Score', y='Risk_Score', data=self.merged_df, hue='User', palette='viridis',
+                        alpha=0.7, legend=False)
+        x_vals = np.linspace(self.merged_df['Risk_Appeal_Score'].min(), self.merged_df['Risk_Appeal_Score'].max(), 100)
+        y_vals = result.params['Intercept'] + slope * x_vals
+        plt.plot(x_vals, y_vals, color='red', label=f'Regression Line')
+
+        plt.text(0.05, 0.9, f'Slope = {slope:.2f}\nP-value: {p_value:.4f}', transform=plt.gca().transAxes)
+
+        plt.title(f'Regression of Risk vs. Risk Appeal Score, Group: {self.group}')
+        plt.xlabel('Risk Appeal Score')
+        plt.ylabel('Daily Risk Taken')
+
+        plt.show()
+
+    def mixed_model_partial_correlation(self):
+        r_values = {}
+        p_values = {}
+        variables = ['Overall_Sleep_Score', 'Woke_Early_Score', 'Woke_Many_Times_Score', 'Sleep_Latency_Score']
+
+        # Residualize Risk_Score for Risk_Appeal_Score
+        base_model = sm.OLS(self.merged_df['Risk_Score'], sm.add_constant(self.merged_df['Risk_Appeal_Score'])).fit()
+        self.merged_df['Residual_Risk_Score'] = base_model.resid
+
+        for var in variables:
+            # Residualize the predictor (var) for Risk_Appeal_Score
+            var_model = sm.OLS(self.merged_df[var], sm.add_constant(self.merged_df['Risk_Appeal_Score'])).fit()
+            self.merged_df[f'Residual_{var}'] = var_model.resid
+
+            # Fit mixed model with residuals
+            model = smf.mixedlm(f"Risk_Score ~ {var}", self.merged_df, groups=self.merged_df['User'])
+            result = model.fit()
+
+            # Predict and calculate correlation between predicted and actual residuals
+            r_values[var] = result.params[f'{var}']
+            p_values[var] = result.pvalues[f'{var}']
+
+        # Create DataFrame for heatmap
+        corr_df = pd.DataFrame([r_values], index=['Risk_Score'])
+        annotations = pd.DataFrame(index=['Risk_Score'], columns=r_values.keys())
+
+        for col in r_values.keys():
+            r_val = r_values[col]
+            p_val = p_values[col]
+            if p_val < 0.05:
+                annotations.at['Risk_Score', col] = f'{r_val:.3f} $\mathbf{{(p={p_val:.3f})}}$'
+            else:
+
+                annotations.at['Risk_Score', col] = f'{r_val:.3f} (p={p_val:.3f})'
+
+        # Plot heatmap
+        plt.figure(figsize=(14, 3))
+        sns.heatmap(corr_df, annot=annotations.values, cmap='coolwarm', vmin=-1, vmax=1, center=0, fmt='',
+                    annot_kws={"size": 12})
+
+        plt.title(f'Partial Correlations with Mixed Model: {self.group}', fontweight='bold')
+        plt.tight_layout()
         plt.show()
