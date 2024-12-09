@@ -91,6 +91,37 @@ class Graph:
         plt.tight_layout()
         plt.show()
 
+    def no_risk_correlation(self):
+        r_values = {}
+        p_values = {}
+        variables = ['Overall Sleep Score', 'Woke Early Score', 'Woke Many Times Score', 'Sleep Latency Score']
+
+        for var in variables:
+            result = pg.corr(self.merged_df[var], self.merged_df['Risk Score'])
+            r_values[var] = result['r'].values[0]
+            p_values[var] = result['p-val'].values[0]
+
+        corr_df = pd.DataFrame([r_values], index=['Risk Score'])
+        annotations = pd.DataFrame(index=['Risk Score'], columns=r_values.keys())
+
+        for col in r_values.keys():
+            r_val = r_values[col]
+            p_val = p_values[col]
+            if p_val < 0.05:
+                annotations.at['Risk Score', col] = f'{r_val:.3f} $\mathbf{{(p={p_val:.3f}}}$)'
+            else:
+                annotations.at['Risk Score', col] = f'{r_val:.3f} (p={p_val:.3f})'
+
+        plt.figure(figsize=(14, 3))
+
+        sns.heatmap(corr_df, annot=annotations.values, cmap='coolwarm', vmin=-1, vmax=1, center=0, fmt='',
+                    annot_kws={"size": 12})
+
+        plt.title(f'Sleep vs Risk Correlation (r-values): {self.group}', fontweight='bold')
+
+        plt.tight_layout()
+        plt.show()
+
     def linear_regression(self):
         coef_values = {}
         p_values = {}
