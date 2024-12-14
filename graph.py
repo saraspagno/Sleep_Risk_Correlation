@@ -15,51 +15,6 @@ class Graph:
         self.group = group
         self.merged_df = merged_df
 
-    def partial_correlation(self):
-        r_values = {}
-        p_values = {}
-        variables = ['Overall_Sleep_Score', 'Woke_Early_Score', 'Woke_Many_Times_Score', 'Sleep_Latency_Score']
-
-        for var in variables:
-            user_r_values = []
-            user_p_values = []
-            for user in self.merged_df['User'].unique():
-                user_data = self.merged_df[self.merged_df['User'] == user]
-                if (len(user_data)) > 2:
-                    result = pg.partial_corr(data=user_data, x=var, y='Risk_Score', covar='Risk_Appeal_Score')
-                    user_r_values.append(result['r'].values[0])
-                    user_p_values.append(result['p-val'].values[0])
-
-            r_values[var] = np.nanmean(user_r_values)
-            p_values[var] = np.nanmean(user_p_values)
-
-        corr_df = pd.DataFrame([r_values], index=['Risk_Score'])
-        annotations = pd.DataFrame(index=['Risk_Score'], columns=r_values.keys())
-
-        for col in r_values.keys():
-            r_val = r_values[col]
-            p_val = p_values[col]
-            if p_val < 0.05:
-                annotations.at['Risk_Score', col] = f'{r_val:.3f} $\mathbf{{(p={p_val:.3f}}}$)'
-            else:
-                annotations.at['Risk_Score', col] = f'{r_val:.3f} (p={p_val:.3f})'
-
-        plt.figure(figsize=(14, 3))
-
-        sns.heatmap(corr_df, annot=annotations.values, cmap='coolwarm', vmin=-1, vmax=1, center=0, fmt='',
-                    annot_kws={"size": 12})
-
-        plt.title(f'Partial Correlations (r-values): {self.group}', fontweight='bold')
-
-        plt.tight_layout()
-        plt.show()
-
-    def pair_plot(self):
-        sns.pairplot(self.merged_df[
-                         ['Overall Sleep Score', 'Woke Early Score', 'Woke Many Times Score', 'Sleep Latency Score',
-                          'Risk Appeal Score', 'Risk Score']])
-        plt.show()
-
     def risk_appeal_regression(self):
 
         # 1. Fit the mixed-effects model

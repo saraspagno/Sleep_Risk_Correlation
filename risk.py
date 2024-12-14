@@ -50,6 +50,7 @@ class Risk:
                 day_to_average_risk_map[day] = statistics.mean(risks)
                 day_to_risk_appeal[day] = statistics.mean(all_risk_appeal[day])
 
+        # the return is a map day->risk, and a map day->risk_appeal
         return [day_to_average_risk_map, day_to_risk_appeal]
 
     def add_risk(self, r0: float, r1: float, choice: int, time, trial_n: int, im0: int, im1: int, all_risks: dict):

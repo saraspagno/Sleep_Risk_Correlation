@@ -49,7 +49,6 @@ def get_all_correlations():
         files.sort()
         for filename in files:
             file_path = os.path.join(group, filename)
-            # print(f"processing file: {file_path}")
             db = DataBase(file_path)
             # creating the Risk object, which will create a map between unique day and risk score
             risk = Risk(db)
