@@ -6,6 +6,7 @@ from database import DataBase
 from graph import Graph
 from risk import Risk
 from sleep import Sleep
+import warnings
 
 
 def merge_all_on_same_day(file_name: str, overall: dict, work_early: dict, woke_many_times: dict, sleep_latency: dict,
@@ -64,8 +65,8 @@ def get_all_correlations():
 
         final_merged_df = pd.concat(all_merged_dfs, ignore_index=True)
         graph = Graph(final_merged_df, group)
-        # graph.mixed_model_regression()
-        graph.mixed_model_partial_correlation()
+        graph.risk_appeal_regression()
+        graph.correlation_between_sleep_and_risk()
 
 
 def main():
@@ -73,4 +74,5 @@ def main():
 
 
 if __name__ == '__main__':
+    warnings.filterwarnings('ignore')
     main()
