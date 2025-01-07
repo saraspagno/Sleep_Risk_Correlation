@@ -1,8 +1,6 @@
 import time
 from datetime import datetime
 
-import pandas as pd
-
 # Edit here to calculate for different groups
 GROUPS = ["first_50", "second_50"]
 
@@ -42,6 +40,12 @@ WHERE
     AND trials.block > 5;
 """
 
+
+MOOD_QUERY = """
+SELECT answer, answer_time 
+FROM answers 
+WHERE answer LIKE '%Anxious=%' OR answer LIKE'%Valence=%'
+"""
 
 def to_unique_day(timestamp) -> int:
     """Turns a timestamp into a unique day without seconds.

@@ -4,37 +4,34 @@ import pandas as pd
 import constants
 from database import DataBase
 from graph import Graph
+from mood import Mood
 from risk import Risk
 from sleep import Sleep
 import warnings
 
 
-def merge_all_on_same_day(file_name: str, overall: dict, work_early: dict, woke_many_times: dict, sleep_latency: dict,
-                          risk: dict,
-                          risk_appeal: dict):
-    """Merges multiple dictionaries in one dataframe.
-    Args:
-      file_name: the name of the file.
-      overall: the overall sleep score.
-      work_early: the woke early sleep score.
-      woke_many_times: the woke many times sleep score.
-      sleep_latency: the sleep latency score.
-      risk: the risk score.
-      risk_appeal: the risk appeal score.
-    """
+def merge_all_on_same_day(file_name: str, risk, sleep, mood):
     data = []
     # days in overall are also present in all other sleep scores.
-    for date in overall:
-        if date in risk and date in risk_appeal:
+    for date in sleep.overall:
+        if date in risk.risk and date in risk.risk_appeal and date in mood.valence and date in mood.arousal and date in mood.anxious and date in mood.valence:
             data.append(
                 {'User': file_name,
                  'Day': date,
-                 'Overall_Sleep_Score': overall[date],
-                 'Woke_Early_Score': work_early[date],
-                 'Woke_Many_Times_Score': woke_many_times[date],
-                 'Sleep_Latency_Score': sleep_latency[date],
-                 'Risk_Score': risk[date],
-                 'Risk_Appeal_Score': risk_appeal[date]})
+                 'Overall_Sleep_Score': sleep.overall[date],
+                 'Woke_Early_Score': sleep.woke_early[date],
+                 'Woke_Many_Times_Score': sleep.woke_many_time[date],
+                 'Sleep_Latency_Score': sleep.sleep_latency[date],
+                 'Risk_Score': risk.risk[date],
+                 'Risk_Appeal_Score': risk.risk_appeal[date],
+                 'Valence': mood.valence[date],
+                 'Arousal': mood.arousal[date],
+                 'Anxious': mood.anxious[date],
+                 'Elated': mood.elated[date],
+                 'Sad': mood.sad[date],
+                 'Irritable': mood.irritable[date],
+                 'Energetic': mood.energetic[date]
+                 })
     return pd.DataFrame(data)
 
 
@@ -56,16 +53,16 @@ def get_all_correlations():
             # creating the sleep object, which will create a map between unique day and sleep score
             sleep = Sleep(db)
 
+            # creating the sleep object, which will create a map between unique day and mood scores
+            mood = Mood(db)
+
             # merging the sleep and risk scores into a dictionary of sleep:risk, based on equal unique day
-            merged_df = merge_all_on_same_day(file_path, sleep.overall, sleep.woke_early, sleep.woke_many_time,
-                                              sleep.sleep_latency,
-                                              risk.risk, risk.risk_appeal)
+            merged_df = merge_all_on_same_day(file_path, risk, sleep, mood)
             all_merged_dfs.append(merged_df)
 
         final_merged_df = pd.concat(all_merged_dfs, ignore_index=True)
         graph = Graph(final_merged_df, group)
-        graph.risk_appeal_regression()
-        graph.correlation_between_sleep_and_risk()
+        graph.mediation_analysis()
 
 
 def main():
