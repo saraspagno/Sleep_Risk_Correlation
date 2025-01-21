@@ -14,7 +14,7 @@ def merge_all_on_same_day(file_name: str, risk, sleep, mood):
     data = []
     # days in overall are also present in all other sleep scores.
     for date in sleep.overall:
-        if date in risk.risk and date in risk.risk_appeal and date in mood.valence and date in mood.arousal and date in mood.anxious and date in mood.valence:
+        if date in risk.risk and date in risk.expected_value and date in mood.irritable:
             data.append(
                 {'User': file_name,
                  'Day': date,
@@ -23,7 +23,7 @@ def merge_all_on_same_day(file_name: str, risk, sleep, mood):
                  'Woke_Many_Times_Score': sleep.woke_many_time[date],
                  'Sleep_Latency_Score': sleep.sleep_latency[date],
                  'Risk_Score': risk.risk[date],
-                 'Risk_Appeal_Score': risk.risk_appeal[date],
+                 'Expected_Value': risk.expected_value[date],
                  'Valence': mood.valence[date],
                  'Arousal': mood.arousal[date],
                  'Anxious': mood.anxious[date],
@@ -39,6 +39,8 @@ def get_all_correlations():
     """Gets all correlations and shows the graphs.
     """
 
+    all_groups_together = []
+    dataframes = {}
     for group in constants.GROUPS:
         all_merged_dfs = []
         print(f"processing directory: {group}\n")
@@ -57,12 +59,20 @@ def get_all_correlations():
             mood = Mood(db)
 
             # merging the sleep and risk scores into a dictionary of sleep:risk, based on equal unique day
-            merged_df = merge_all_on_same_day(file_path, risk, sleep, mood)
-            all_merged_dfs.append(merged_df)
+            file_df = merge_all_on_same_day(file_path, risk, sleep, mood)
+            all_merged_dfs.append(file_df)
 
-        final_merged_df = pd.concat(all_merged_dfs, ignore_index=True)
-        graph = Graph(final_merged_df, group)
-        graph.mediation_analysis()
+        group_df = pd.concat(all_merged_dfs, ignore_index=True)
+        dataframes[group] = group_df
+        all_groups_together.append(group_df)
+
+    all_groups_df = pd.concat(all_groups_together, ignore_index=True)
+    dataframes["Both Groups"] = all_groups_df
+    graph = Graph(all_groups_df, "All Groups", dataframes)
+    # graph.risk_expected_value_regression()
+    # graph.correlation_between_sleep_and_risk()
+    # graph.correlation_between_sleep_mood()
+    graph.mediation_analysis_from_scratch()
 
 
 def main():

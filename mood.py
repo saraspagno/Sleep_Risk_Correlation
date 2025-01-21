@@ -24,17 +24,16 @@ class Mood:
         sad = defaultdict(list)
         irritable = defaultdict(list)
         energetic = defaultdict(list)
-        scaler = MinMaxScaler(feature_range=(0, 100))
 
         for r in self.rows:
-            valence_score = re.search(r'Valence=(\d+)', r[0])
+            valence_score = re.search(r'Valence=(-?\d+)', r[0])
             if valence_score:
-                normalized = scaler.fit_transform([[float(valence_score.group(1))], [-300], [300]])[0][0]
+                normalized = normalize(float(valence_score.group(1)))
                 valence[constants.to_unique_day(r[1])].append(normalized)
 
-            arousal_score = re.search(r'Arousal=(\d+)', r[0])
+            arousal_score = re.search(r'Arousal=(-?\d+)', r[0])
             if arousal_score:
-                normalized = scaler.fit_transform([[float(arousal_score.group(1))], [-300], [300]])[0][0]
+                normalized = normalize(float(arousal_score.group(1)))
                 arousal[constants.to_unique_day(r[1])].append(normalized)
 
             anxious_score = re.search(r'Anxious=(\d+)', r[0])
@@ -66,3 +65,8 @@ def average(score_dict):
     for day, scores in score_dict.items():
         result[day] = statistics.mean(scores)
     return result
+
+
+# Normalize to a range between [0, 100]
+def normalize(value):
+    return 100 * (value - (-500)) / (500 - (-500))
