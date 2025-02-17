@@ -14,7 +14,7 @@ def merge_all_on_same_day(file_name: str, risk, sleep, mood):
     data = []
     # days in overall are also present in all other sleep scores.
     for date in sleep.overall:
-        if date in risk.risk and date in risk.expected_value and date in mood.irritable:
+        if date in risk.risk and date in risk.experience_value and date in mood.irritable:
             data.append(
                 {'User': file_name,
                  'Day': date,
@@ -23,7 +23,7 @@ def merge_all_on_same_day(file_name: str, risk, sleep, mood):
                  'Woke_Many_Times_Score': sleep.woke_many_time[date],
                  'Sleep_Latency_Score': sleep.sleep_latency[date],
                  'Risk_Score': risk.risk[date],
-                 'Expected_Value': risk.expected_value[date],
+                 'Experience_Value': risk.experience_value[date],
                  'Valence': mood.valence[date],
                  'Arousal': mood.arousal[date],
                  'Anxious': mood.anxious[date],
@@ -68,11 +68,12 @@ def get_all_correlations():
 
     all_groups_df = pd.concat(all_groups_together, ignore_index=True)
     dataframes["Both Groups"] = all_groups_df
-    graph = Graph(all_groups_df, "All Groups", dataframes)
-    # graph.risk_expected_value_regression()
-    # graph.correlation_between_sleep_and_risk()
-    # graph.correlation_between_sleep_mood()
-    graph.mediation_analysis_from_scratch()
+    graph = Graph(all_groups_df, dataframes)
+    graph.risk_experience_value_regression()
+    graph.sleep_risk_regression()
+    graph.correlation_between_sleep_mood()
+    graph.mediation_sleep_mood_risk()
+    graph.mediation_sleep_risk_mood()
 
 
 def main():

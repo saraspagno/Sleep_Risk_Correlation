@@ -15,7 +15,7 @@ class Risk:
         self.rows = self.get_rows()
         # dictionary between image number and its scores
         self.image_outcomes = defaultdict(lambda: [])
-        self.risk, self.expected_value = self.parse()
+        self.risk, self.experience_value = self.parse()
 
     def get_rows(self):
         """Reads the rows using the risk query.
@@ -28,14 +28,14 @@ class Risk:
         """
         # map between a day and a risk or an accuracy
         all_risks = {}
-        all_expected_value = {}
+        all_experience_value = {}
         for r in self.rows:
             # taking all parameters needed from the row
             [r0, r1, choice, time, im0, im1] = [r[0], r[1], r[2], r[3], r[4], r[5]]
             [outcome, feedback, rank0, rank1, trial] = [r[6], r[7], r[8], r[9], r[10]]
             if should_calculate_risk_score(rank0, rank1, feedback, r0, r1):
                 self.add_risk(r0, r1, choice, time, trial, im0, im1, all_risks)
-                self.add_expected_value(im0, im1, r0, r1, time, all_expected_value)
+                self.add_experience_value(im0, im1, r0, r1, time, all_experience_value)
             if feedback:
                 if choice == 0:
                     self.image_outcomes[im0].append(outcome)
@@ -43,17 +43,17 @@ class Risk:
                     self.image_outcomes[im1].append(outcome)
 
         day_to_average_risk_map = {}
-        day_to_expected_value = {}
+        day_to_experience_value = {}
 
         # calculating the risk and risk appeal scores per day
         minimum_size_average = 5
         for day, risks in all_risks.items():
             if len(risks) >= minimum_size_average:
                 day_to_average_risk_map[day] = statistics.mean(risks)
-                day_to_expected_value[day] = statistics.mean(all_expected_value[day])
+                day_to_experience_value[day] = statistics.mean(all_experience_value[day])
 
-        # the return is a map day->risk, and a map day->expected_value
-        return [day_to_average_risk_map, day_to_expected_value]
+        # the return is a map day->risk, and a map day->experience_value
+        return [day_to_average_risk_map, day_to_experience_value]
 
     def add_risk(self, r0: float, r1: float, choice: int, time, trial_n: int, im0: int, im1: int, all_risks: dict):
         """Adds one couple of day:risk to the all risks map (in place, doesn't return anything).
@@ -77,7 +77,7 @@ class Risk:
         # each day has 70 trials scores
         all_risks.setdefault(constants.to_unique_day(time), []).append(float(risk_taken))
 
-    def add_expected_value(self, im0: int, im1: int, r0: int, r1: int, time, all_expected: dict) -> None:
+    def add_experience_value(self, im0: int, im1: int, r0: int, r1: int, time, all_experience: dict) -> None:
         average0, average1 = 0, 0
         if len(self.image_outcomes[im0]) != 0:
             # the average all outcomes given by image0 (in previous trials with feedback)
@@ -88,15 +88,15 @@ class Risk:
         # if the risky is image0
         if r0 > r1:
             # the appeal of picking the risky image (im0) is the difference in average return
-            expected_value = average0 - average1
+            experience_value = average0 - average1
         else:
-            expected_value = average1 - average0
+            experience_value = average1 - average0
 
-        all_expected.setdefault(constants.to_unique_day(time), []).append(float(expected_value))
+        all_experience.setdefault(constants.to_unique_day(time), []).append(float(experience_value))
 
 
 def should_calculate_risk_score(rank0: int, rank1: int, feedback: int, r0: int, r1: int) -> bool:
-    # including this trial into risk_score and expected_value only if ranks are 1, no feedback, and different reward
+    # including this trial into risk_score and experience_value only if ranks are 1, no feedback, and different reward
     if rank0 != 1 or rank1 != 1 or feedback == 1 or r0 == r1:
         return False
     return True

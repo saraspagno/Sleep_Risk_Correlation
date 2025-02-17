@@ -10,13 +10,12 @@ import networkx as nx
 
 
 class Graph:
-    def __init__(self, merged_df, group: str, groups_dfs):
-        self.group = group
+    def __init__(self, merged_df, groups_dfs):
         self.groups_dfs = groups_dfs
         self.merged_df = merged_df
 
-    def risk_expected_value_regression(self):
-        self.plot_regression('Expected_Value', 'Risk_Score')
+    def risk_experience_value_regression(self):
+        self.plot_regression('Experience_Value', 'Risk_Score')
 
     def correlation_between_sleep_and_risk(self):
         fig = plt.figure(figsize=(14, len(self.groups_dfs) * 3.4), dpi=350)
@@ -30,12 +29,12 @@ class Graph:
             # Fit the mixed model for both sleep and risk scores
             for var in variables:
                 # Fit the mixed-effects model for sleep score
-                sleep_model = smf.mixedlm(f"{var} ~ Expected_Value", dataframe, groups=dataframe["User"])
+                sleep_model = smf.mixedlm(f"{var} ~ Experience_Value", dataframe, groups=dataframe["User"])
                 sleep_result = sleep_model.fit()
                 residuals_sleep = sleep_result.resid
 
                 # Fit the mixed-effects model for risk score
-                risk_model = smf.mixedlm("Risk_Score ~ Expected_Value", dataframe, groups=dataframe["User"])
+                risk_model = smf.mixedlm("Risk_Score ~ Experience_Value", dataframe, groups=dataframe["User"])
                 risk_result = risk_model.fit()
                 residuals_risk = risk_result.resid
 
@@ -75,8 +74,8 @@ class Graph:
             variables = ['Valence', 'Arousal', 'Anxious', 'Elated', 'Sad', 'Irritable', 'Energetic']
 
             for var in variables:
-                mood_residual = smf.mixedlm(f"{var} ~ Expected_Value", dataframe, groups=dataframe["User"]).fit().resid
-                residuals_risk = smf.mixedlm("Risk_Score ~ Expected_Value", dataframe,
+                mood_residual = smf.mixedlm(f"{var} ~ Experience_Value", dataframe, groups=dataframe["User"]).fit().resid
+                residuals_risk = smf.mixedlm("Risk_Score ~ Experience_Value", dataframe,
                                              groups=dataframe["User"]).fit().resid
                 corr, p_val = stats.pearsonr(mood_residual, residuals_risk)
 
@@ -144,7 +143,7 @@ class Graph:
         plt.show()
 
     def sleep_risk_regression(self):
-        sleep_variables = ['Overall_Sleep_Score', 'Woke_Early_Score', 'Woke_Many_Times_Score', 'Sleep_Latency_Score']
+        sleep_variables = ['Overall_Sleep_Score']
         for sleep_variables in sleep_variables:
             self.plot_regression('Risk_Score', sleep_variables)
 
@@ -152,6 +151,7 @@ class Graph:
         fig = plt.figure(figsize=(14, len(self.groups_dfs) * 4), dpi=350)
         for i, group in enumerate(self.groups_dfs, start=1):
             ax = fig.add_subplot(len(self.groups_dfs), 1, i)
+            # TODO: add + Experience_Value to the formula when checking sleep/risk regression.
             dataframe = self.groups_dfs[group]
             model = smf.mixedlm(
                 f"{var1} ~ {var2}",
@@ -197,33 +197,33 @@ class Graph:
                 bbox=dict(facecolor='white', alpha=0.7, edgecolor='black', boxstyle='round,pad=0.5')
             )
 
-            ax.set_title(f"{group}", fontsize=12, fontweight='bold')
+            # ax.set_title(f"{group}", fontsize=12, fontweight='bold')
             ax.set_xlabel(f"{var2}")
             ax.set_ylabel(f"{var1}", )
 
         plt.subplots_adjust(hspace=0.3)
-        fig.suptitle(f"{var1}/{var2}\nMixed Effects Model on Users", fontweight='bold')
+        fig.suptitle(f"{var1.replace('_', ' ')}/{var2.replace('_', ' ')}\nMixed Effects Model on Users", fontweight='bold')
         plt.show()
 
-    def mediation_analysis_from_scratch(self):
+    def mediation_sleep_mood_risk(self):
         dataframe = self.groups_dfs["Both Groups"]
         sleep_variables = ['Overall_Sleep_Score', 'Woke_Many_Times_Score', 'Sleep_Latency_Score']
         mood_variables = ['Valence', 'Arousal', 'Anxious', 'Elated']
 
-        # Normalize the Risk Score and Expected Value between 0-100.
+        # Normalize the Risk Score and Experience Value between 0-100.
         dataframe['Risk_Score'] = 100 * (dataframe['Risk_Score'] - dataframe['Risk_Score'].min()) / (
                 dataframe['Risk_Score'].max() - dataframe['Risk_Score'].min())
-        dataframe['Expected_Value'] = 100 * (dataframe['Expected_Value'] - dataframe['Expected_Value'].min()) / (
-                dataframe['Expected_Value'].max() - dataframe['Expected_Value'].min())
+        dataframe['Experience_Value'] = 100 * (dataframe['Experience_Value'] - dataframe['Experience_Value'].min()) / (
+                dataframe['Experience_Value'].max() - dataframe['Experience_Value'].min())
 
-        # Get the residuals for Risk Score by removing the Expected Value.
-        residuals_risk = smf.mixedlm("Risk_Score ~ Expected_Value", dataframe, groups=dataframe["User"]).fit().resid
+        # Get the residuals for Risk Score by removing the Experience Value.
+        residuals_risk = smf.mixedlm("Risk_Score ~ Experience_Value", dataframe, groups=dataframe["User"]).fit().resid
         dataframe["Risk_Score"] = residuals_risk
         for sleep in sleep_variables:
-            dataframe[f"{sleep}"] = smf.mixedlm(f"{sleep} ~ Expected_Value", dataframe,
+            dataframe[f"{sleep}"] = smf.mixedlm(f"{sleep} ~ 1", dataframe,
                                                 groups=dataframe["User"]).fit().resid
             for mood in mood_variables:
-                dataframe[f"{mood}"] = smf.mixedlm(f"{mood} ~ Expected_Value", dataframe,
+                dataframe[f"{mood}"] = smf.mixedlm(f"{mood} ~ 1", dataframe,
                                                    groups=dataframe["User"]).fit().resid
 
                 # Step1 - Correlation Sleep and Risk:
@@ -249,23 +249,72 @@ class Graph:
                     b_p = mediation.loc[mediation['path'] == f"Y ~ {mood}", "pval"].values[0]
                     total_p = mediation.loc[mediation['path'] == "Total", "pval"].values[0]
                     indirect_p = mediation.loc[mediation['path'] == "Indirect", "pval"].values[0]
-                    plot_mediation_graph(sleep, mood, a_coeff, b_coeff, total_coeff, indirect_coeff, a_p, b_p, total_p,
+                    plot_mediation_graph(sleep, mood, 'Risk_Score', a_coeff, b_coeff, total_coeff, indirect_coeff, a_p, b_p, total_p,
                                          indirect_p)
 
+    def mediation_sleep_risk_mood(self):
+        dataframe = self.groups_dfs["Both Groups"]
+        sleep_variables = ['Overall_Sleep_Score', 'Woke_Many_Times_Score', 'Sleep_Latency_Score']
+        mood_variables = ['Valence', 'Arousal', 'Anxious', 'Elated']
 
-def plot_mediation_graph(sleep, mood, a_coeff, b_coeff, total_coeff, indirect_coeff, a_p, b_p, total_p, indirect_p):
+        # Normalize the Risk Score and Experience Value between 0-100.
+        dataframe['Risk_Score'] = 100 * (dataframe['Risk_Score'] - dataframe['Risk_Score'].min()) / (
+                dataframe['Risk_Score'].max() - dataframe['Risk_Score'].min())
+        dataframe['Experience_Value'] = 100 * (dataframe['Experience_Value'] - dataframe['Experience_Value'].min()) / (
+                dataframe['Experience_Value'].max() - dataframe['Experience_Value'].min())
+
+        # Get the residuals for Risk Score by removing the Experience Value.
+        residuals_risk = smf.mixedlm("Risk_Score ~ Experience_Value", dataframe, groups=dataframe["User"]).fit().resid
+        dataframe["Risk_Score"] = residuals_risk
+        for sleep in sleep_variables:
+            dataframe[f"{sleep}"] = smf.mixedlm(f"{sleep} ~ 1", dataframe,
+                                                groups=dataframe["User"]).fit().resid
+            for mood in mood_variables:
+                dataframe[f"{mood}"] = smf.mixedlm(f"{mood} ~ 1", dataframe,
+                                                   groups=dataframe["User"]).fit().resid
+
+                # Step1 - Correlation Sleep and Mood:
+                model = smf.mixedlm(f"{mood} ~ {sleep}", dataframe, groups=dataframe["User"]).fit()
+                sleep_mood_p_val = model.pvalues[f"{sleep}"]
+
+                # Step2 - Correlation Sleep to Risk:
+                model = smf.mixedlm(f"Risk_Score ~ {sleep} ", dataframe, groups=dataframe["User"]).fit()
+                sleep_risk_p_val = model.pvalues[f"{sleep}"]
+
+                should_continue = False
+                if sleep_mood_p_val <= 0.05 and sleep_risk_p_val <= 0.05:
+                    should_continue = True
+
+                # Step3 - Correlation Sleep + Mood → Risk (X + M → Y)
+                if should_continue:
+                    mediation = pg.mediation_analysis(data=dataframe, x=sleep, m='Risk_Score', y=mood)
+                    a_coeff = mediation.loc[mediation['path'] == f"Risk_Score ~ X", "coef"].values[0]
+                    b_coeff = mediation.loc[mediation['path'] == f"Y ~ Risk_Score", "coef"].values[0]
+                    total_coeff = mediation.loc[mediation['path'] == "Total", "coef"].values[0]
+                    indirect_coeff = mediation.loc[mediation['path'] == "Indirect", "coef"].values[0]
+                    a_p = mediation.loc[mediation['path'] == f"Risk_Score ~ X", "pval"].values[0]
+                    b_p = mediation.loc[mediation['path'] == f"Y ~ Risk_Score", "pval"].values[0]
+                    total_p = mediation.loc[mediation['path'] == "Total", "pval"].values[0]
+                    indirect_p = mediation.loc[mediation['path'] == "Indirect", "pval"].values[0]
+                    plot_mediation_graph(sleep, 'Risk_Score', mood, a_coeff, b_coeff, total_coeff, indirect_coeff, a_p, b_p, total_p,
+                                         indirect_p)
+
+def plot_mediation_graph(x_var, m_var, y_var, a_coeff, b_coeff, total_coeff, indirect_coeff, a_p, b_p, total_p, indirect_p):
+    x_var = x_var.replace('_', ' ')
+    m_var = m_var.replace('_', ' ')
+    y_var = y_var.replace('_', ' ')
     G = nx.DiGraph()
 
-    G.add_node(f"{sleep} (X)")
-    G.add_node(f"{mood} (M)")
-    G.add_node(f"Risk (Y)")
+    G.add_node(f"{x_var}")
+    G.add_node(f"{m_var}")
+    G.add_node(f"{y_var}")
 
-    G.add_edge(f"{sleep} (X)", f"{mood} (M)", label=f"{a_coeff:.3f} (p={a_p:.3f})")
-    G.add_edge(f"{mood} (M)", "Risk (Y)", label=f"{b_coeff:.3f} (p={b_p:.3f})")
-    G.add_edge(f"{sleep} (X)", "Risk (Y)",
+    G.add_edge(f"{x_var}", f"{m_var}", label=f"{a_coeff:.3f} (p={a_p:.3f})")
+    G.add_edge(f"{m_var}", f"{y_var}", label=f"{b_coeff:.3f} (p={b_p:.3f})")
+    G.add_edge(f"{x_var}", f"{y_var}",
                label=f"Total: {total_coeff:.3f} (p={total_p:.3f}) | Indirect: {indirect_coeff:.3f} (p={indirect_p:.3f})")
 
-    pos = {f"{sleep} (X)": (0, 0), f"{mood} (M)": (1, 1), "Risk (Y)": (2, 0)}
+    pos = {f"{x_var}": (0, 0), f"{m_var}": (1, 1), f"{y_var}": (2, 0)}
 
     plt.figure(figsize=(13, 8))
     ax = plt.gca()
@@ -281,6 +330,6 @@ def plot_mediation_graph(sleep, mood, a_coeff, b_coeff, total_coeff, indirect_co
             bbox=dict(boxstyle="round,pad=2.1", edgecolor="black", facecolor=color_map[i % len(color_map)])
         )
 
-    plt.title(f"Mediation Analysis Between: {sleep} (X), {mood} (M), and Risk (Y)", fontsize=14, fontweight='bold')
+    plt.title(f"Mediation Analysis Between: {x_var}, {m_var}, and {y_var}", fontsize=14, fontweight='bold')
     plt.axis("off")
     plt.show()
