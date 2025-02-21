@@ -74,6 +74,7 @@ def get_all_correlations():
     graph.correlation_between_sleep_mood()
     graph.mediation_sleep_mood_risk()
     graph.mediation_sleep_risk_mood()
+    graph.sleep_mood_regression()
 
 
 def main():

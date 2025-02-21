@@ -74,7 +74,8 @@ class Graph:
             variables = ['Valence', 'Arousal', 'Anxious', 'Elated', 'Sad', 'Irritable', 'Energetic']
 
             for var in variables:
-                mood_residual = smf.mixedlm(f"{var} ~ Experience_Value", dataframe, groups=dataframe["User"]).fit().resid
+                mood_residual = smf.mixedlm(f"{var} ~ Experience_Value", dataframe,
+                                            groups=dataframe["User"]).fit().resid
                 residuals_risk = smf.mixedlm("Risk_Score ~ Experience_Value", dataframe,
                                              groups=dataframe["User"]).fit().resid
                 corr, p_val = stats.pearsonr(mood_residual, residuals_risk)
@@ -147,6 +148,13 @@ class Graph:
         for sleep_variables in sleep_variables:
             self.plot_regression('Risk_Score', sleep_variables)
 
+    def sleep_mood_regression(self):
+        sleep_variables = ['Overall_Sleep_Score', 'Woke_Many_Times_Score', 'Sleep_Latency_Score']
+        mood_variables = ['Anxious', 'Elated', 'Arousal', 'Valence']
+        for sleep_variables in sleep_variables:
+            for mood in mood_variables:
+                self.plot_regression(mood, sleep_variables)
+
     def plot_regression(self, var1, var2):
         fig = plt.figure(figsize=(14, len(self.groups_dfs) * 4), dpi=350)
         for i, group in enumerate(self.groups_dfs, start=1):
@@ -202,7 +210,8 @@ class Graph:
             ax.set_ylabel(f"{var1}", )
 
         plt.subplots_adjust(hspace=0.3)
-        fig.suptitle(f"{var1.replace('_', ' ')}/{var2.replace('_', ' ')}\nMixed Effects Model on Users", fontweight='bold')
+        fig.suptitle(f"{var2.replace('_', ' ')}/{var1.replace('_', ' ')}\nMixed Effects Model on Users",
+                     fontweight='bold')
         plt.show()
 
     def mediation_sleep_mood_risk(self):
@@ -249,7 +258,8 @@ class Graph:
                     b_p = mediation.loc[mediation['path'] == f"Y ~ {mood}", "pval"].values[0]
                     total_p = mediation.loc[mediation['path'] == "Total", "pval"].values[0]
                     indirect_p = mediation.loc[mediation['path'] == "Indirect", "pval"].values[0]
-                    plot_mediation_graph(sleep, mood, 'Risk_Score', a_coeff, b_coeff, total_coeff, indirect_coeff, a_p, b_p, total_p,
+                    plot_mediation_graph(sleep, mood, 'Risk_Score', a_coeff, b_coeff, total_coeff, indirect_coeff, a_p,
+                                         b_p, total_p,
                                          indirect_p)
 
     def mediation_sleep_risk_mood(self):
@@ -296,10 +306,13 @@ class Graph:
                     b_p = mediation.loc[mediation['path'] == f"Y ~ Risk_Score", "pval"].values[0]
                     total_p = mediation.loc[mediation['path'] == "Total", "pval"].values[0]
                     indirect_p = mediation.loc[mediation['path'] == "Indirect", "pval"].values[0]
-                    plot_mediation_graph(sleep, 'Risk_Score', mood, a_coeff, b_coeff, total_coeff, indirect_coeff, a_p, b_p, total_p,
+                    plot_mediation_graph(sleep, 'Risk_Score', mood, a_coeff, b_coeff, total_coeff, indirect_coeff, a_p,
+                                         b_p, total_p,
                                          indirect_p)
 
-def plot_mediation_graph(x_var, m_var, y_var, a_coeff, b_coeff, total_coeff, indirect_coeff, a_p, b_p, total_p, indirect_p):
+
+def plot_mediation_graph(x_var, m_var, y_var, a_coeff, b_coeff, total_coeff, indirect_coeff, a_p, b_p, total_p,
+                         indirect_p):
     x_var = x_var.replace('_', ' ')
     m_var = m_var.replace('_', ' ')
     y_var = y_var.replace('_', ' ')
